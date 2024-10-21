@@ -13,42 +13,74 @@ fn main() {
     std::fs::write(OUTPUT_FILENAME, result.join("\n")).expect("Failed to write file");
 }
 
+fn string_to_register(input: &str) -> u8 {
+    if !input.starts_with("r") {
+        panic!("Expect a register, but found {}", input);
+    }
+    let reg = input[1..].to_string().parse::<u8>().unwrap();
+
+    if reg > 31 {
+        panic!("Invalid register: {}", input);
+    }
+    reg
+}
+
+fn parse_a_command(input: &str) -> AsmCmd {
+    let segs = input.split_whitespace().collect::<Vec<&str>>();
+    let operation = segs[0].to_uppercase();
+
+    if operation == "PUSH" || operation == "POP" {
+        let op = ICmdOp::from_str(operation.as_str()).unwrap();
+        let rt = string_to_register(segs[1]);
+
+        AsmCmd::I(ICmd::new(0, rt, 0, op))
+    }
+    // Regular commands
+    else if RCmndFunc::VARIANTS.contains(&operation.as_str()) {
+        let func = RCmndFunc::from_str(operation.as_str()).unwrap();
+        let rs = string_to_register(segs[1]);
+        let rt = string_to_register(segs[2]);
+        let rd = string_to_register(segs[3]);
+        let shamt = segs[4].parse::<u8>().unwrap();
+
+        AsmCmd::R(RCmd::new(rs, rt, rd, shamt, func))
+    }
+    // Immediate commands
+    else if ICmdOp::VARIANTS.contains(&operation.as_str()) {
+        let op = ICmdOp::from_str(operation.as_str()).unwrap();
+        let rs = string_to_register(segs[1]);
+        let rt = string_to_register(segs[2]);
+        let imm = segs[3].parse::<u16>().unwrap();
+
+        AsmCmd::I(ICmd::new(rs, rt, imm, op))
+    }
+    // Jump commands
+    else if JCmdOp::VARIANTS.contains(&operation.as_str()) {
+        let op = JCmdOp::from_str(segs[1]).unwrap();
+        let addr = segs[2].parse::<u32>().unwrap();
+
+        AsmCmd::J(JCmd::new(addr, op))
+    }
+    // Unknown command
+    else {
+        panic!("Unknown command: {}", operation);
+    }
+}
+
 fn assemble(input: &str) -> Vec<String> {
-    let segments: Vec<&str> = input.split_whitespace().filter(|x| !x.is_empty()).collect();
-    println!("{:?}", segments);
-    let mut result = Vec::new();
+    let mut res = Vec::new();
 
-    let mut iter = segments.iter().peekable();
-
-    while let Some(&seg) = iter.next() {
-        let seg = seg.to_uppercase();
-
-        let cmd: AsmCmd = if RCmndFunc::VARIANTS.contains(&seg.as_str()) {
-            let func = RCmndFunc::from_str(seg.as_str()).unwrap();
-            let rs = iter.next().unwrap().parse::<u8>().unwrap();
-            let rt = iter.next().unwrap().parse::<u8>().unwrap();
-            let rd = iter.next().unwrap().parse::<u8>().unwrap();
-            let shamt = iter.next().unwrap().parse::<u8>().unwrap();
-
-            AsmCmd::R(RCmd::new(rs, rt, rd, shamt, func))
-        } else if ICmdOp::VARIANTS.contains(&seg.as_str()) {
-            let op = ICmdOp::from_str(seg.as_str()).unwrap();
-            let rs = iter.next().unwrap().parse::<u8>().unwrap();
-            let rt = iter.next().unwrap().parse::<u8>().unwrap();
-            let imm = iter.next().unwrap().parse::<u16>().unwrap();
-
-            AsmCmd::I(ICmd::new(rs, rt, imm, op))
-        } else if JCmdOp::VARIANTS.contains(&seg.as_str()) {
-            let op = JCmdOp::from_str(seg.as_str()).unwrap();
-            let addr = iter.next().unwrap().parse::<u32>().unwrap();
-
-            AsmCmd::J(JCmd::new(addr, op))
-        } else {
-            panic!("Invalid command: {}", seg);
-        };
-
-        result.push(cmd.assemble());
+    for line in input.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        } else if line.starts_with("#") {
+            res.push(line.to_string());
+            continue;
+        }
+        let cmd = parse_a_command(line);
+        res.push(cmd.assemble());
     }
 
-    result
+    res
 }
