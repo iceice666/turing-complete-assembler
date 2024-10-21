@@ -11,3 +11,8 @@ addi r2 r1 4
 push r1 
 # r2 <- stack
 pop r2
+
+add r2 r1 r3
+mov r3 r4
+
+sll r4 r0 2

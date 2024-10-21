@@ -29,21 +29,38 @@ fn parse_a_command(input: &str) -> AsmCmd {
     let segs = input.split_whitespace().collect::<Vec<&str>>();
     let operation = segs[0].to_uppercase();
 
+    // For PUSH and POP commands, they only need one argument as target
     if operation == "PUSH" || operation == "POP" {
         let op = ICmdOp::from_str(operation.as_str()).unwrap();
         let rt = string_to_register(segs[1]);
 
         AsmCmd::I(ICmd::new(0, rt, 0, op))
     }
-    // Regular commands
+    // MOV equals to ADDI with immediate value 0
+    else if operation == "MOV" {
+        let rs = string_to_register(segs[1]);
+        let rt = string_to_register(segs[2]);
+
+        AsmCmd::I(ICmd::new(rs, rt, 0, ICmdOp::ADDI))
+    }
+    // Shift operations
+    else if operation == "SLL" || operation == "SRL" || operation == "SRA" {
+        let func = RCmndFunc::from_str(operation.as_str()).unwrap();
+        let rt = string_to_register(segs[1]);
+        let rd = string_to_register(segs[2]);
+        let shamt = segs[3].parse::<u8>().unwrap();
+
+        AsmCmd::R(RCmd::new(0, rt, rd, shamt, func))
+        
+    }
+    // Regular commands, exclude shift operations
     else if RCmndFunc::VARIANTS.contains(&operation.as_str()) {
         let func = RCmndFunc::from_str(operation.as_str()).unwrap();
         let rs = string_to_register(segs[1]);
         let rt = string_to_register(segs[2]);
         let rd = string_to_register(segs[3]);
-        let shamt = segs[4].parse::<u8>().unwrap();
 
-        AsmCmd::R(RCmd::new(rs, rt, rd, shamt, func))
+        AsmCmd::R(RCmd::new(rs, rt, rd, 0, func))
     }
     // Immediate commands
     else if ICmdOp::VARIANTS.contains(&operation.as_str()) {
