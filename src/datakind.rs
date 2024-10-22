@@ -1,6 +1,5 @@
 #![allow(clippy::upper_case_acronyms)]
 
-use strum::{EnumString, VariantNames};
 
 pub trait Assemble {
     fn assemble(&self) -> String;
@@ -21,31 +20,17 @@ impl Assemble for AsmCmd {
     }
 }
 
-#[derive(Copy, Clone, EnumString, VariantNames, PartialEq)]
-pub enum RCmndFunc {
-    ADD = 0b000001,
-    SUB = 0b000010,
-    AND = 0b000011,
-    OR = 0b000100,
-    XOR = 0b000101,
-    SLL = 0b000110,
-    SRL = 0b000111,
-    SRA = 0b001000,
-    SLT = 0b001001,
-    JR = 0b010000,
-}
-
 pub struct RCmd {
     // op            // 6 bits
     rs: u8,          // 5 bits
     rt: u8,          // 5 bits
     rd: u8,          // 5 bits
     shamt: u8,       // 5 bits
-    func: RCmndFunc, // 6 bits
+    func: u8, // 6 bits
 }
 
 impl RCmd {
-    pub fn new(rs: u8, rt: u8, rd: u8, shamt: u8, func: RCmndFunc) -> Self {
+    pub fn new(rs: u8, rt: u8, rd: u8, shamt: u8, func: u8) -> Self {
         Self {
             rs,
             rt,
@@ -71,34 +56,15 @@ impl Assemble for RCmd {
     }
 }
 
-#[derive(Copy, Clone, EnumString, VariantNames, PartialEq)]
-pub enum ICmdOp {
-    ADDI = 0b000001,
-    SUBI = 0b000010,
-    ANDI = 0b000011,
-    ORI = 0b000100,
-    XORI = 0b000101,
-    SLTI = 0b001001,
-
-    LW = 0b010000,
-    SW = 0b010001,
-    LI = 0b010010,
-    SO = 0b010011,
-    POP = 0b010100,
-    PUSH = 0b010101,
-
-    BEQ = 0b100000,
-}
-
 pub struct ICmd {
-    op: ICmdOp, // 6 bits
+    op: u8, // 6 bits
     rs: u8,     // 5 bits
     rt: u8,     // 5 bits
     imm: u16,   // 16 bits
 }
 
 impl ICmd {
-    pub fn new(rs: u8, rt: u8, imm: u16, op: ICmdOp) -> Self {
+    pub fn new(rs: u8, rt: u8, imm: u16, op: u8) -> Self {
         Self { op, rs, rt, imm }
     }
 }
@@ -117,18 +83,14 @@ impl Assemble for ICmd {
     }
 }
 
-#[derive(Copy, Clone, EnumString, VariantNames, PartialEq)]
-pub enum JCmdOp {
-    J = 0b100001,
-}
 
 pub struct JCmd {
-    op: JCmdOp, // 6 bits
+    op: u8, // 6 bits
     addr: u32,  // 26 bits
 }
 
 impl JCmd {
-    pub fn new(addr: u32, op: JCmdOp) -> Self {
+    pub fn new(addr: u32, op: u8) -> Self {
         Self { op, addr }
     }
 }
@@ -158,7 +120,7 @@ mod tests {
             rt: 2,
             rd: 3,
             shamt: 0,
-            func: RCmndFunc::ADD,
+            func: 0b000001,
         };
 
         assert_eq!(cmd.assemble(), "0x00 0x22 0x18 0x01");
@@ -167,7 +129,7 @@ mod tests {
     #[test]
     fn test_i_cmd_assemble() {
         let cmd = ICmd {
-            op: ICmdOp::ADDI,
+            op: 1,
             rs: 1,
             rt: 2,
             imm: 11,
@@ -179,7 +141,7 @@ mod tests {
     #[test]
     fn test_j_cmd_assemble() {
         let cmd = JCmd {
-            op: JCmdOp::J,
+            op: 0b100001,
             addr: 87,
         };
 
