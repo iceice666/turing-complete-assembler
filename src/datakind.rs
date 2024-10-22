@@ -1,4 +1,4 @@
-#![allow(clippy::upper_case_acronyms, dead_code)]
+#![allow(clippy::upper_case_acronyms)]
 
 use strum::{EnumString, VariantNames};
 
@@ -36,7 +36,7 @@ pub enum RCmndFunc {
 }
 
 pub struct RCmd {
-    op: u8,          // 6 bits
+    // op            // 6 bits
     rs: u8,          // 5 bits
     rt: u8,          // 5 bits
     rd: u8,          // 5 bits
@@ -47,7 +47,6 @@ pub struct RCmd {
 impl RCmd {
     pub fn new(rs: u8, rt: u8, rd: u8, shamt: u8, func: RCmndFunc) -> Self {
         Self {
-            op: 0,
             rs,
             rt,
             rd,
@@ -155,7 +154,6 @@ mod tests {
     #[test]
     fn test_r_cmd_assemble() {
         let cmd = RCmd {
-            op: 0,
             rs: 1,
             rt: 2,
             rd: 3,

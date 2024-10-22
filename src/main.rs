@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::str::FromStr;
 
 use datakind::{AsmCmd, Assemble, ICmd, ICmdOp, JCmd, JCmdOp, RCmd, RCmndFunc};
@@ -5,100 +6,151 @@ use strum::VariantNames;
 
 pub mod datakind;
 
-fn main() {
+fn main() -> Result<(), String> {
     const INPUT_FILENAME: &str = "input.asm";
     const OUTPUT_FILENAME: &str = "output.asm";
-    let content = std::fs::read_to_string(INPUT_FILENAME).expect("Failed to read file");
-    let result = assemble(&content);
-    std::fs::write(OUTPUT_FILENAME, result.join("\n")).expect("Failed to write file");
+
+    // Use more descriptive error messages
+    let content = std::fs::read_to_string(INPUT_FILENAME).expect("Failed to read the input file");
+    let result = parse(content)?;
+
+    std::fs::write(OUTPUT_FILENAME, result.join("\n")).expect("Failed to write to the output file");
+
+    Ok(())
 }
 
-fn string_to_register(input: &str) -> u8 {
+fn parse(input: String) -> Result<Vec<String>, String> {
+    let symbols = parse_symbols(&input)?;
+    let result = assemble(&input, symbols)?;
+
+    Ok(result)
+}
+
+fn parse_symbols(input: &str) -> Result<HashMap<String, u32>, String> {
+    let mut symbols: HashMap<String, u32> = HashMap::new();
+
+    input
+        .lines()
+        .map(|x| x.trim())
+        .filter(|x| !(x.is_empty() || x.starts_with("#")))
+        .try_fold(0, |acc, line| {
+            let segments: Vec<&str> = line.split_whitespace().collect();
+            let operation = segments[0].to_uppercase();
+
+            if operation == "LABEL" {
+                let label = segments[1];
+                if label.ends_with(":") || segments[2] == ":" {
+                    symbols.insert(label.trim_end_matches(":").to_string(), acc);
+                } else {
+                    return Err("Require a ':' after an label symbol".to_string());
+                }
+            }
+
+            Ok(acc + 1)
+        })?;
+
+    Ok(symbols)
+}
+
+fn string_to_register(input: &str) -> Result<u8, String> {
     if !input.starts_with("r") {
-        panic!("Expect a register, but found {}", input);
+        return Err(format!("Expected a register, but found '{}'", input));
     }
-    let reg = input[1..].to_string().parse::<u8>().unwrap();
+
+    let reg = input[1..]
+        .parse::<u8>()
+        .map_err(|_| format!("Invalid register format: '{}'", input))?;
 
     if reg > 31 {
-        panic!("Invalid register: {}", input);
+        return Err(format!("Invalid register number: '{}'", input));
     }
-    reg
+
+    Ok(reg)
 }
 
-fn parse_a_command(input: &str) -> AsmCmd {
-    let segs = input.split_whitespace().collect::<Vec<&str>>();
-    let operation = segs[0].to_uppercase();
+fn parse_shift_operation(operation: &str, segments: &[&str]) -> Result<AsmCmd, String> {
+    let func = RCmndFunc::from_str(operation)
+        .map_err(|_| format!("Invalid shift operation: '{}'", operation))?;
+    let rd = string_to_register(segments[1])?;
+    let rt = string_to_register(segments[2])?;
+    let shamt = segments[3]
+        .parse::<u8>()
+        .map_err(|_| format!("Invalid shift amount: '{}'", segments[3]))?;
 
-    match operation.as_str() {
-        // For PUSH and POP commands, they only need one argument as target
-        "PUSH" | "POP" => {
-            let op = ICmdOp::from_str(operation.as_str()).unwrap();
-            let rt = string_to_register(segs[1]);
-
-            AsmCmd::I(ICmd::new(0, rt, 0, op))
-        }
-        // MOV equals to ADDI with immediate value 0
-        "MOV" => {
-            let rt = string_to_register(segs[1]);
-            let rs = string_to_register(segs[2]);
-
-            AsmCmd::I(ICmd::new(rs, rt, 0, ICmdOp::ADDI))
-        }
-        // Shift operations
-        "SLL" | "SRL" | "SRA" => {
-            let func = RCmndFunc::from_str(operation.as_str()).unwrap();
-            let rd = string_to_register(segs[1]);
-            let rt = string_to_register(segs[2]);
-            let shamt = segs[3].parse::<u8>().unwrap();
-
-            AsmCmd::R(RCmd::new(0, rt, rd, shamt, func))
-        }
-        // Regular commands, exclude shift operations
-        _ if RCmndFunc::VARIANTS.contains(&operation.as_str()) => {
-            let func = RCmndFunc::from_str(operation.as_str()).unwrap();
-            let rd = string_to_register(segs[1]);
-            let rs = string_to_register(segs[2]);
-            let rt = string_to_register(segs[3]);
-
-            AsmCmd::R(RCmd::new(rs, rt, rd, 0, func))
-        }
-        // Immediate commands
-        _ if ICmdOp::VARIANTS.contains(&operation.as_str()) => {
-            let op = ICmdOp::from_str(operation.as_str()).unwrap();
-            let rs = string_to_register(segs[1]);
-            let rt = string_to_register(segs[2]);
-            let imm = segs[3].parse::<u16>().unwrap();
-
-            AsmCmd::I(ICmd::new(rs, rt, imm, op))
-        }
-        // Jump commands
-        _ if JCmdOp::VARIANTS.contains(&operation.as_str()) => {
-            let op = JCmdOp::from_str(segs[1]).unwrap();
-            let addr = segs[2].parse::<u32>().unwrap();
-
-            AsmCmd::J(JCmd::new(addr, op))
-        }
-        // Unknown command
-        _ => {
-            panic!("Unknown command: {}", operation);
-        }
-    }
+    Ok(AsmCmd::R(RCmd::new(0, rt, rd, shamt, func)))
 }
 
-fn assemble(input: &str) -> Vec<String> {
+fn assemble(input: &str, symbols: HashMap<String, u32>) -> Result<Vec<String>, String> {
     let mut res = Vec::new();
+    let mut lineno: u32 = 0;
 
     for line in input.lines() {
         let line = line.trim();
-        let r = if line.is_empty() {
-            "".to_string()
-        } else if line.starts_with("#") {
-            line.to_string()
-        } else {
-            parse_a_command(line).assemble()
+
+        if line.is_empty() || line.starts_with('#') {
+            // Directly push empty or comment lines to the result
+            res.push(line.to_string());
+            continue;
+        }
+
+        lineno += 1;
+        let segments: Vec<&str> = line.split_whitespace().collect();
+        let operation = segments[0].to_uppercase();
+
+        let cmd_result = match operation.as_str() {
+            "GOTO" => {
+                let op = JCmdOp::J;
+                let label = segments[1];
+                let target_line = symbols
+                    .get(label)
+                    .unwrap_or_else(|| panic!("Undefined symbol '{}'", label))
+                    .to_owned();
+
+                Ok(AsmCmd::J(JCmd::new(target_line * 4, op)))
+            }
+            "PUSH" | "POP" => {
+                let op = ICmdOp::from_str(&operation).unwrap();
+                let rt = string_to_register(segments[1])?;
+                Ok(AsmCmd::I(ICmd::new(0, rt, 0, op)))
+            }
+            "MOV" => {
+                let rt = string_to_register(segments[1])?;
+                let rs = string_to_register(segments[2])?;
+                Ok(AsmCmd::I(ICmd::new(rs, rt, 0, ICmdOp::ADDI)))
+            }
+            "SLL" | "SRL" | "SRA" => parse_shift_operation(&operation, &segments),
+            _ if RCmndFunc::VARIANTS.contains(&operation.as_str()) => {
+                let func = RCmndFunc::from_str(&operation).unwrap();
+                let rd = string_to_register(segments[1])?;
+                let rs = string_to_register(segments[2])?;
+                let rt = string_to_register(segments[3])?;
+                Ok(AsmCmd::R(RCmd::new(rs, rt, rd, 0, func)))
+            }
+            _ if ICmdOp::VARIANTS.contains(&operation.as_str()) => {
+                let op = ICmdOp::from_str(&operation).unwrap();
+                let rs = string_to_register(segments[1])?;
+                let rt = string_to_register(segments[2])?;
+                let imm = segments[3]
+                    .parse::<u16>()
+                    .map_err(|_| format!("Invalid immediate value: '{}'", segments[3]))?;
+                Ok(AsmCmd::I(ICmd::new(rs, rt, imm, op)))
+            }
+            _ if JCmdOp::VARIANTS.contains(&operation.as_str()) => {
+                let op = JCmdOp::from_str(&operation).unwrap();
+                let addr = segments[1]
+                    .parse::<u32>()
+                    .map_err(|_| format!("Invalid jump address: '{}'", segments[1]))?;
+                Ok(AsmCmd::J(JCmd::new(addr, op)))
+            }
+            "LABEL" => continue,
+            _ => Err(format!("Unknown command: {}", operation)),
         };
-        res.push(r);
+
+        match cmd_result {
+            Ok(cmd) => res.push(cmd.assemble()),
+            Err(err) => panic!("Error on line {}: {}", lineno, err),
+        }
     }
 
-    res
+    Ok(res)
 }
