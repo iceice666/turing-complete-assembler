@@ -18,8 +18,11 @@ fn main() {
 
 fn parse(input: String) -> Vec<String> {
     let lines = input.lines().map(str::trim);
+    let symbols = parse_symbols(lines.clone()).unwrap();
 
-    assemble(lines.clone(), parse_symbols(lines).unwrap()).unwrap()
+    println!("{:#?}", symbols);
+
+    assemble(lines, symbols).unwrap()
 }
 
 fn parse_symbols<'a>(input: impl Iterator<Item = &'a str>) -> Result<HashMap<String, u32>, String> {
@@ -57,7 +60,7 @@ fn parse_symbols<'a>(input: impl Iterator<Item = &'a str>) -> Result<HashMap<Str
                 }
                 _ => return Err(format!("Unknown declaration: '{}'", operation)),
             }
-        } else if !line.is_empty() {
+        } else if !line.is_empty() && !line.starts_with('#') {
             lineno += 1;
         }
     }
@@ -108,13 +111,14 @@ fn assemble<'a>(
     let mut lineno = 0;
 
     for line in input {
-        let line = line.trim();
-
         if line.starts_with('!') {
             res.push("# ".to_string() + line);
             continue;
         } else if line.is_empty() {
             res.push("".to_string());
+            continue;
+        } else if line.starts_with('#') {
+            res.push(line.to_string());
             continue;
         }
 
@@ -157,7 +161,7 @@ fn assemble<'a>(
                 shamt.map(|shamt| AsmCmd::R(RCmd::new(0, rt, rd, shamt, func)))
             }
 
-            "ADD" | "SUB" | "AND" | "OR" | "XOR" | "JR" => {
+            "ADD" | "SUB" | "AND" | "OR" | "XOR" | "SLT" | "JR" => {
                 let func = match operation {
                     "ADD" => 0b000001,
                     "SUB" => 0b000010,
