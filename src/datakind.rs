@@ -1,6 +1,5 @@
 #![allow(clippy::upper_case_acronyms)]
 
-
 pub trait Assemble {
     fn assemble(&self) -> String;
 }
@@ -22,11 +21,11 @@ impl Assemble for AsmCmd {
 
 pub struct RCmd {
     // op            // 6 bits
-    rs: u8,          // 5 bits
-    rt: u8,          // 5 bits
-    rd: u8,          // 5 bits
-    shamt: u8,       // 5 bits
-    func: u8, // 6 bits
+    rs: u8,    // 5 bits
+    rt: u8,    // 5 bits
+    rd: u8,    // 5 bits
+    shamt: u8, // 5 bits
+    func: u8,  // 6 bits
 }
 
 impl RCmd {
@@ -47,7 +46,7 @@ impl Assemble for RCmd {
         let first = self.rs >> 3;
         let second = (self.rs << 5) | self.rt;
         let third = (self.rd << 3) | (self.shamt >> 2);
-        let fourth = (self.shamt << 6) | (self.func as u8);
+        let fourth = (self.shamt << 6) | self.func;
 
         format!(
             "{:#04X} {:#04X} {:#04X} {:#04X}",
@@ -57,10 +56,10 @@ impl Assemble for RCmd {
 }
 
 pub struct ICmd {
-    op: u8, // 6 bits
-    rs: u8,     // 5 bits
-    rt: u8,     // 5 bits
-    imm: u16,   // 16 bits
+    op: u8,   // 6 bits
+    rs: u8,   // 5 bits
+    rt: u8,   // 5 bits
+    imm: u16, // 16 bits
 }
 
 impl ICmd {
@@ -71,7 +70,7 @@ impl ICmd {
 
 impl Assemble for ICmd {
     fn assemble(&self) -> String {
-        let first = (self.op as u8) << 2 | (self.rs >> 3);
+        let first = self.op << 2 | (self.rs >> 3);
         let second = (self.rs << 5) | self.rt;
         let third = (self.imm >> 8) as u8;
         let fourth = self.imm as u8;
@@ -83,10 +82,9 @@ impl Assemble for ICmd {
     }
 }
 
-
 pub struct JCmd {
-    op: u8, // 6 bits
-    addr: u32,  // 26 bits
+    op: u8,    // 6 bits
+    addr: u32, // 26 bits
 }
 
 impl JCmd {
@@ -97,7 +95,7 @@ impl JCmd {
 
 impl Assemble for JCmd {
     fn assemble(&self) -> String {
-        let first = (self.op as u8) << 2 | (self.addr >> 24) as u8;
+        let first = self.op << 2 | (self.addr >> 24) as u8;
         let second = (self.addr >> 16) as u8;
         let third = (self.addr >> 8) as u8;
         let fourth = self.addr as u8;

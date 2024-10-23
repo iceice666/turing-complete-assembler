@@ -30,10 +30,10 @@ fn parse_symbols<'a>(input: impl Iterator<Item = &'a str>) -> Result<HashMap<Str
     let mut lineno = 0;
 
     for line in input {
-        if line.starts_with("!") {
-            let segments: Vec<&str> = line.trim_start_matches("!").split_whitespace().collect();
+        if let Some(line) = line.strip_prefix('!') {
+            let segments: Vec<&str> = line.split_whitespace().collect();
             let operation = segments
-                .get(0)
+                .first()
                 .ok_or_else(|| format!("Empty symbol line at {}", lineno))?
                 .to_uppercase();
 
@@ -78,8 +78,8 @@ fn resolve_symbol<T: FromStr + From<u8>>(
     }
 
     // reg
-    if value.starts_with("r") {
-        let reg_num = value[1..]
+    if let Some(value) = value.strip_prefix("r") {
+        let reg_num = value
             .parse::<u8>()
             .map_err(|_| format!("Invalid register: '{}'", value))?;
         if reg_num > 31 {
