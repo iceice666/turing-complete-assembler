@@ -1,10 +1,10 @@
-# ! alias N r0
-# ! alias D r1
-# ! alias Q r2
-# ! alias R r3
-# ! alias cmp r4
-# ! alias zero r5
-# ! alias one r6
+# ! alias N $0
+# ! alias D $1
+# ! alias Q $2
+# ! alias R $3
+# ! alias cmp $4
+# ! alias zero $5
+# ! alias one $6
 
 # ! label init
 0x48 0x00 0x00 0x00 # li N [ln.1]
@@ -15,13 +15,16 @@
 
 
 # ! label mainloop
-# cmp <- R < D
+# cmp <- (R < D)
 0x00 0x61 0x20 0x09 # slt cmp R D [ln.6]
 
+# if (cmp == one) goto exit
 0x80 0xC4 0x00 0x03 # beq cmp one exit [ln.7]
 
 # div
+# R <- R - D
 0x00 0x61 0x18 0x02 # sub R R D [ln.8]
+# Q <- Q + 1
 0x04 0x42 0x00 0x01 # addi Q Q 1 [ln.9]
 0x80 0x00 0xFF 0xFB # goto mainloop [ln.10]
 
