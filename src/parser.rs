@@ -1,16 +1,19 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use crate::datakind::{AsmCmd, Assemble, ICmd, JCmd, RCmd};
+use crate::{
+    datakind::{AsmCmd, Assemble, ICmd, JCmd, RCmd},
+    CliOptions,
+};
 
-pub fn parse(input: String) -> Vec<String> {
+pub(crate) fn parse(input: String, option: CliOptions) -> Vec<String> {
     let lines = input.lines().map(str::trim);
     let symbols = parse_symbols(lines.clone()).unwrap();
 
     #[cfg(debug_assertions)]
     println!("{:#?}", symbols);
 
-    assemble(lines, symbols).unwrap()
+    assemble(lines, symbols, option).unwrap()
 }
 
 fn parse_symbols<'a>(input: impl Iterator<Item = &'a str>) -> Result<HashMap<String, u32>, String> {
@@ -94,19 +97,26 @@ fn resolve_symbol<T: FromStr + From<u8>>(
 fn assemble<'a>(
     input: impl Iterator<Item = &'a str>,
     symbols: HashMap<String, u32>,
+    option: CliOptions,
 ) -> Result<Vec<String>, String> {
     let mut res = Vec::new();
     let mut lineno = 0;
 
     for line in input {
         if line.starts_with('!') {
-            res.push("# ".to_string() + line);
+            if !option.no_comments {
+                res.push("# ".to_string() + line);
+            }
             continue;
         } else if line.is_empty() {
-            res.push("".to_string());
+            if !option.no_comments {
+                res.push("".to_string());
+            }
             continue;
         } else if line.starts_with('#') {
-            res.push(line.to_string());
+            if !option.no_comments {
+                res.push(line.to_string());
+            }
             continue;
         }
 
@@ -219,7 +229,13 @@ fn assemble<'a>(
         };
 
         match cmd_result {
-            Ok(cmd) => res.push(format!("{} # {} [ln.{}]", cmd.assemble(), line, lineno)),
+            Ok(cmd) => {
+                if option.no_comments {
+                    res.push(format!("{}", cmd.assemble()))
+                } else {
+                    res.push(format!("{} # {} [ln.{}]", cmd.assemble(), line, lineno))
+                }
+            }
             Err(err) => return Err(format!("Error on line {}: {}", lineno, err,)),
         }
     }
