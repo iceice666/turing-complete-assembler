@@ -2,5 +2,9 @@
 name = "assembler"
 version = "0.1.0"
 edition = "2021"
+authors = ["iceice666"]
+repository= "https://github.com/iceice666/turing-complete-assembler"
+license = "MIT"
 
 [dependencies]
+clap = { version = "4.5.20", features = ["derive"] }
