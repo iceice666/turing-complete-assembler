@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::{
-    datakind::{AsmCmd, Assemble, ICmd, JCmd, RCmd},
+    datakind::{InstructionKind, Assemble, IType, JType, RType},
     CliOptions,
 };
 
@@ -131,20 +131,20 @@ fn assemble<'a>(
             "GOTO" => {
                 let target_line: u32 = resolve_symbol(segments[1], &symbols)?;
                 let offset = target_line.overflowing_sub(lineno).0;
-                Ok(AsmCmd::I(ICmd::new(0, 0, offset as u16, 0b100000)))
+                Ok(InstructionKind::I(IType::new(0, 0, offset as u16, 0b100000)))
             }
 
             "MOV" => {
                 let rt = resolve_symbol(segments[1], &symbols)?;
                 let rs = resolve_symbol(segments[2], &symbols)?;
-                Ok(AsmCmd::I(ICmd::new(rs, rt, 0, 1)))
+                Ok(InstructionKind::I(IType::new(rs, rt, 0, 1)))
             }
             "INC" => {
                 let rt = resolve_symbol(segments[1], &symbols)?;
-                Ok(AsmCmd::I(ICmd::new(rt, rt, 1, 1)))
+                Ok(InstructionKind::I(IType::new(rt, rt, 1, 1)))
             }
 
-            // R-type commands
+            // R-type instructions
             "SLL" | "SRL" | "SRA" => {
                 let func = match operation {
                     "SLL" => 0b000110,
@@ -157,7 +157,7 @@ fn assemble<'a>(
                 let shamt = resolve_symbol(segments[3], &symbols)
                     .map_err(|_| format!("Invalid shift amount: '{}'", segments[3]));
 
-                shamt.map(|shamt| AsmCmd::R(RCmd::new(0, rt, rd, shamt, func)))
+                shamt.map(|shamt| InstructionKind::R(RType::new(0, rt, rd, shamt, func)))
             }
 
             "ADD" | "SUB" | "AND" | "OR" | "XOR" | "SLT" | "JR" => {
@@ -174,10 +174,10 @@ fn assemble<'a>(
                 let rd = resolve_symbol(segments[1], &symbols)?;
                 let rs = resolve_symbol(segments[2], &symbols)?;
                 let rt = resolve_symbol(segments[3], &symbols)?;
-                Ok(AsmCmd::R(RCmd::new(rs, rt, rd, 0, func)))
+                Ok(InstructionKind::R(RType::new(rs, rt, rd, 0, func)))
             }
 
-            // I-type commands
+            // I-type instructions
             "PUSH" | "POP" | "LI" | "SO" => {
                 let op = match operation {
                     "LI" => 0b010010,
@@ -187,7 +187,7 @@ fn assemble<'a>(
                     _ => unreachable!(),
                 };
                 let rt = resolve_symbol(segments[1], &symbols)?;
-                Ok(AsmCmd::I(ICmd::new(0, rt, 0, op)))
+                Ok(InstructionKind::I(IType::new(0, rt, 0, op)))
             }
             "LW" | "SW" | "ADDI" | "SUBI" | "ANDI" | "ORI" | "XORI" | "SLTI" => {
                 let op = match operation {
@@ -206,7 +206,7 @@ fn assemble<'a>(
                 let imm = resolve_symbol(segments[3], &symbols)
                     .map_err(|_| format!("Invalid immediate value: '{}'", segments[3]));
 
-                imm.map(|imm| AsmCmd::I(ICmd::new(rs, rt, imm, op)))
+                imm.map(|imm| InstructionKind::I(IType::new(rs, rt, imm, op)))
             }
             "BEQ" => {
                 let op = 0b100000;
@@ -214,16 +214,16 @@ fn assemble<'a>(
                 let rs = resolve_symbol(segments[2], &symbols)?;
                 let target_line: u32 = resolve_symbol(segments[3], &symbols)?;
                 let offset = target_line.overflowing_sub(lineno).0;
-                Ok(AsmCmd::I(ICmd::new(rs, rt, offset as u16, op)))
+                Ok(InstructionKind::I(IType::new(rs, rt, offset as u16, op)))
             }
 
-            // J-type commands
+            // J-type instructions
             "J" => {
                 let op = 0b100001;
                 let addr = resolve_symbol(segments[1], &symbols)
                     .map_err(|_| format!("Invalid jump address: '{}'", segments[1]));
 
-                addr.map(|addr| AsmCmd::J(JCmd::new(addr, op)))
+                addr.map(|addr| InstructionKind::J(JType::new(addr, op)))
             }
 
             _ => Err(format!("Unknown command: {}", oper)),

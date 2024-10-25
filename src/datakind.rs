@@ -4,22 +4,22 @@ pub trait Assemble {
     fn assemble(&self) -> String;
 }
 
-pub enum AsmCmd {
-    R(RCmd),
-    I(ICmd),
-    J(JCmd),
+pub enum InstructionKind {
+    R(RType),
+    I(IType),
+    J(JType),
 }
-impl Assemble for AsmCmd {
+impl Assemble for InstructionKind {
     fn assemble(&self) -> String {
         match self {
-            AsmCmd::R(cmd) => cmd.assemble(),
-            AsmCmd::I(cmd) => cmd.assemble(),
-            AsmCmd::J(cmd) => cmd.assemble(),
+            InstructionKind::R(cmd) => cmd.assemble(),
+            InstructionKind::I(cmd) => cmd.assemble(),
+            InstructionKind::J(cmd) => cmd.assemble(),
         }
     }
 }
 
-pub struct RCmd {
+pub struct RType {
     // op            // 6 bits
     rs: u8,    // 5 bits
     rt: u8,    // 5 bits
@@ -28,7 +28,7 @@ pub struct RCmd {
     func: u8,  // 6 bits
 }
 
-impl RCmd {
+impl RType {
     pub fn new(rs: u8, rt: u8, rd: u8, shamt: u8, func: u8) -> Self {
         Self {
             rs,
@@ -40,7 +40,7 @@ impl RCmd {
     }
 }
 
-impl Assemble for RCmd {
+impl Assemble for RType {
     fn assemble(&self) -> String {
         // RCmd ignores op field
         let first = self.rs >> 3;
@@ -55,20 +55,20 @@ impl Assemble for RCmd {
     }
 }
 
-pub struct ICmd {
+pub struct IType {
     op: u8,   // 6 bits
     rs: u8,   // 5 bits
     rt: u8,   // 5 bits
     imm: u16, // 16 bits
 }
 
-impl ICmd {
+impl IType {
     pub fn new(rs: u8, rt: u8, imm: u16, op: u8) -> Self {
         Self { op, rs, rt, imm }
     }
 }
 
-impl Assemble for ICmd {
+impl Assemble for IType {
     fn assemble(&self) -> String {
         let first = self.op << 2 | (self.rs >> 3);
         let second = (self.rs << 5) | self.rt;
@@ -82,18 +82,18 @@ impl Assemble for ICmd {
     }
 }
 
-pub struct JCmd {
+pub struct JType {
     op: u8,    // 6 bits
     addr: u32, // 26 bits
 }
 
-impl JCmd {
+impl JType {
     pub fn new(addr: u32, op: u8) -> Self {
         Self { op, addr }
     }
 }
 
-impl Assemble for JCmd {
+impl Assemble for JType {
     fn assemble(&self) -> String {
         let first = self.op << 2 | (self.addr >> 24) as u8;
         let second = (self.addr >> 16) as u8;
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_r_cmd_assemble() {
-        let cmd = RCmd {
+        let cmd = RType {
             rs: 1,
             rt: 2,
             rd: 3,
@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_i_cmd_assemble() {
-        let cmd = ICmd {
+        let cmd = IType {
             op: 1,
             rs: 1,
             rt: 2,
@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_j_cmd_assemble() {
-        let cmd = JCmd {
+        let cmd = JType {
             op: 0b100001,
             addr: 87,
         };
