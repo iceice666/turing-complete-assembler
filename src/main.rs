@@ -22,5 +22,14 @@ fn main() {
 
     let result = parser::parse(content, cli);
 
-    std::fs::write(output_filename, result.join("\n")).expect("Failed to write to the output file");
+    match result {
+        Ok(result) => {
+            println!("Assembled successfully");
+            std::fs::write(output_filename, result.join("\n"))
+                .expect("Failed to write to the output file");
+        }
+        Err(err) => {
+            eprintln!("Failed to assemble: {}", err);
+        }
+    }
 }

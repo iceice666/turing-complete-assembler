@@ -6,14 +6,14 @@ use crate::{
     CliOptions,
 };
 
-pub(crate) fn parse(input: String, option: CliOptions) -> Vec<String> {
+pub(crate) fn parse(input: String, option: CliOptions) -> Result<Vec<String>, String> {
     let lines = input.lines().map(str::trim);
-    let symbols = parse_symbols(lines.clone()).unwrap();
+    let symbols = parse_symbols(lines.clone())?;
 
     #[cfg(debug_assertions)]
     println!("{:#?}", symbols);
 
-    assemble(lines, symbols, option).unwrap()
+    assemble(lines, symbols, option)
 }
 
 fn parse_symbols<'a>(input: impl Iterator<Item = &'a str>) -> Result<HashMap<String, u32>, String> {
@@ -122,6 +122,7 @@ fn assemble<'a>(
 
         lineno += 1;
 
+        let line = line.split("#").next().unwrap(); // Remove comments
         let segments: Vec<&str> = line.split_whitespace().collect();
         let oper = segments[0].to_uppercase();
         let operation = oper.as_str();
@@ -231,7 +232,7 @@ fn assemble<'a>(
         match cmd_result {
             Ok(cmd) => {
                 if option.no_comments {
-                    res.push(format!("{}", cmd.assemble()))
+                    res.push(cmd.assemble().to_string())
                 } else {
                     res.push(format!("{} # {} [ln.{}]", cmd.assemble(), line, lineno))
                 }
