@@ -8,7 +8,7 @@ struct CliOptions {
     /// The path to the file to be assembled
     path: String,
 
-    /// Should remove all comments from the output
+    /// Preventing the assembler from copying comments to the output
     #[arg(long)]
     no_comments: bool,
 }
