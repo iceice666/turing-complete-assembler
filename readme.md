@@ -11,25 +11,33 @@ An assembler for my machine which designed in the [Turing Complete Game].
 
 0. **[Install Rust]** if not already installed.
 1. **Clone the Repository:**
+
    ```bash
    git clone https://github.com/iceice666/turing-complete-assembler.git
    ```
+
 2. **Build the Assembler:**
+
    ```bash
    cargo build --release
    ```
+
    The executable will be in `target/release/assembler`.
 
 ## Usage
 
 ### Basic Command
+
 ```bash
 assembler <asm_file>
 ```
+
 This will generate a binary (`.bin`) file in the same directory with the same name as `<asm_file>`.
 
 ### Options and Help
+
 For more options, use:
+
 ```bash
 assembler -h
 ```
@@ -41,6 +49,7 @@ assembler -h
 - **Comments:** Start with `#`. Inline comments after instructions are ignored. Other comments will be copied to the output.
 
 ### Pseudo Instructions
+
 Pseudo instructions start with `!` and case-insensitive.
 All pseudo instructions will be copied to the output as comments.
 
@@ -52,6 +61,7 @@ All pseudo instructions will be copied to the output as comments.
 All instructions are case-insensitive.
 
 #### R-type Instructions
+
 | Instruction | Syntax                  | Description              |
 | ----------- | ----------------------- | ------------------------ |
 | `add`       | `add <rd> <rs> <rt>`    | `rd = rs + rt`           |
@@ -66,6 +76,7 @@ All instructions are case-insensitive.
 | `jr`        | `jr <rs>`               | `PC = rs`                |
 
 #### I-type Instructions
+
 | Instruction | Syntax                 | Description                            |
 | ----------- | ---------------------- | -------------------------------------- |
 | `addi`      | `addi <rt> <rs> <imm>` | `rt = rs + imm`                        |
@@ -83,6 +94,7 @@ All instructions are case-insensitive.
 | `beq`       | `beq <rs> <rt> <imm>`  | `if (rs == rt) PC = PC + 4 + imm << 2` |
 
 #### Special Instructions
+
 These are aliases for commonly used instruction sequences.
 
 | Instruction | Syntax          | Translated Instructions |
@@ -95,9 +107,12 @@ These are aliases for commonly used instruction sequences.
 
 There's some solution for the game in the `solution` directory.
 
+## Future Work
 
-
+- [ ] Add J-type instructions.
+- [ ] Add function support (`call` and `ret`)
+- [ ] Support meaningful register like `$zero` `$sp` `$ra` etc.
+- [ ] Add section support (`.data`, `.text`, etc.)
 
 [Turing Complete Game]: https://store.steampowered.com/app/1444480/Turing_Complete/
 [Install Rust]: https://www.rust-lang.org/
-
